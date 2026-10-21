@@ -161,9 +161,9 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Registro público desactivado: las cuentas del staff las crea un admin
+        // (php artisan make:filament-user o el seeder de usuarios), no un formulario abierto.
         Features::resetPasswords(),
-        Features::emailVerification(),
         Features::twoFactorAuthentication([
             'confirm' => true,
             'confirmPassword' => true,

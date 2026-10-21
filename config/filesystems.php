@@ -47,6 +47,26 @@ return [
             'report' => false,
         ],
 
+        // Carpeta del sistema legado con los PDFs de contratos históricos,
+        // usada solo por el comando import:contracts para re-vincularlos.
+        'legacy_contracts' => [
+            'driver' => 'local',
+            'root' => env('LEGACY_CONTRACTS_PATH', base_path('../gestion/contratos')),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Carpeta del sistema legado con los comprobantes de pago históricos,
+        // usada solo por el comando import:payments para re-vincularlos.
+        'legacy_receipts' => [
+            'driver' => 'local',
+            'root' => env('LEGACY_RECEIPTS_PATH', base_path('../gestion/comprobantes')),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

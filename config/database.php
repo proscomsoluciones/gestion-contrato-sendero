@@ -64,6 +64,23 @@ return [
             ]) : [],
         ],
 
+        // Base del sistema legado, usada solo por los comandos artisan import:*
+        // durante la migración de datos. En producción debe apuntar a un usuario
+        // MySQL con permisos de solo SELECT (nunca las credenciales de la app).
+        'legacy' => [
+            'driver' => 'mysql',
+            'host' => env('DB_LEGACY_HOST', '127.0.0.1'),
+            'port' => env('DB_LEGACY_PORT', '3306'),
+            'database' => env('DB_LEGACY_DATABASE', 'senderoo_funeraria'),
+            'username' => env('DB_LEGACY_USERNAME', 'root'),
+            'password' => env('DB_LEGACY_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'strict' => true,
+            'engine' => null,
+        ],
+
         'mariadb' => [
             'driver' => 'mariadb',
             'url' => env('DB_URL'),
