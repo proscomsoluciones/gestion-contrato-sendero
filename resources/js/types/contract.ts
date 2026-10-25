@@ -53,6 +53,7 @@ export type Contract = {
     surcharge: number | null;
     additional_charge: number | null;
     down_payment: number | null;
+    mortuary_quota: number | null;
     total: number | null;
     is_installment_plan: boolean | null;
     installments_count: number | null;

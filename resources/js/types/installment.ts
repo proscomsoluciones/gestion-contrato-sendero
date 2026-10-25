@@ -10,4 +10,6 @@ export type Installment = {
     status: string;
     paid_at: string | null;
     invoice_number: string | null;
+    number?: number | null;
+    total_count?: number | null;
 };

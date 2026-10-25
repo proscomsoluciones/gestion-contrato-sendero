@@ -56,6 +56,7 @@ class UpdateContractRequest extends FormRequest
             'surcharge' => ['nullable', 'integer', 'min:0'],
             'additional_charge' => ['nullable', 'integer', 'min:0'],
             'down_payment' => ['nullable', 'integer', 'min:0'],
+            'mortuary_quota' => ['nullable', 'integer', 'min:0'],
             'total' => ['nullable', 'integer', 'min:0'],
             'is_installment_plan' => ['boolean'],
             'installments_count' => ['nullable', 'integer', 'min:1', 'max:120'],

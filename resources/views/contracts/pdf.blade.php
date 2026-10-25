@@ -127,11 +127,18 @@
             <td style="color: #166534; font-weight: 700;">${{ number_format($contract->down_payment, 0, ',', '.') }} CLP</td>
         </tr>
         @endif
+        @if ($contract->mortuary_quota)
+        <tr>
+            <th>Cuota Mortuoria</th>
+            <td style="color: #166534; font-weight: 700;">${{ number_format($contract->mortuary_quota, 0, ',', '.') }} CLP</td>
+        </tr>
+        @endif
         @php
             $totalPayments = ($contract->payments ? $contract->payments->sum('total') : 0) + ($contract->down_payment ?? 0);
-            $pendingBalance = max(0, ($contract->total ?? 0) - $totalPayments);
+            // La cuota mortuoria se descuenta del saldo igual que en ContractController::generateInstallments
+            $pendingBalance = max(0, ($contract->total ?? 0) - $totalPayments - ($contract->mortuary_quota ?? 0));
         @endphp
-        @if ($totalPayments > 0)
+        @if ($totalPayments > 0 || $contract->mortuary_quota)
         <tr>
             <th>Total Abonos / Pagos Realizados</th>
             <td style="color: #15803d; font-weight: 700;">${{ number_format($totalPayments, 0, ',', '.') }} CLP</td>

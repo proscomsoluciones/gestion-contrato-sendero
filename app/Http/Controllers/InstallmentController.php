@@ -31,9 +31,23 @@ class InstallmentController extends Controller
                             ->orWhere('last_name', 'like', "%{$search}%");
                     });
             })
-            ->orderByDesc('id')
+            ->orderByDesc('contract_id')
+            ->orderByRaw('due_date IS NULL, due_date, id')
             ->paginate($perPage)
             ->withQueryString();
+
+        // Número correlativo de cada cuota dentro de su contrato ("2 de 3"), ordenado por vencimiento
+        $siblings = Installment::query()
+            ->whereIn('contract_id', $installments->getCollection()->pluck('contract_id')->filter()->unique())
+            ->orderByRaw('due_date IS NULL, due_date, id')
+            ->get(['id', 'contract_id'])
+            ->groupBy('contract_id');
+
+        $installments->getCollection()->each(function (Installment $installment) use ($siblings) {
+            $ids = $siblings->get($installment->contract_id)?->pluck('id');
+            $installment->setAttribute('number', $ids ? $ids->search($installment->id) + 1 : null);
+            $installment->setAttribute('total_count', $ids?->count());
+        });
 
         return Inertia::render('installments/index', [
             'installments' => $installments,

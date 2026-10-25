@@ -46,10 +46,12 @@ export default function ContractFormFields({
     const [isInstallment, setIsInstallment] = useState<boolean>(contract?.is_installment_plan ?? false);
     const [total, setTotal] = useState<number>(contract?.total ?? 0);
     const [downPayment, setDownPayment] = useState<number>(contract?.down_payment ?? 0);
-    const [count, setCount] = useState<number>(contract?.installments_count ?? (contract?.installments?.length || 12));
+    const [mortuaryQuota, setMortuaryQuota] = useState<number>(contract?.mortuary_quota ?? 0);
+    const [count, setCount] = useState<number>(contract?.installments_count ?? (contract?.installments?.length || 1));
     const [firstDueDate, setFirstDueDate] = useState<string>(contract?.first_due_date ?? '');
 
-    const balance = Math.max(0, (total || 0) - (downPayment || 0));
+    // Misma regla que ContractController::generateInstallments: total - pie - cuota mortuoria
+    const balance = Math.max(0, (total || 0) - (downPayment || 0) - (mortuaryQuota || 0));
     const installmentEst = count > 0 ? Math.floor(balance / count) : 0;
 
     return (
@@ -214,6 +216,17 @@ export default function ContractFormFields({
                             placeholder="0" 
                         />
                     </Field>
+                    <Field id="mortuary_quota" label="Cuota Mortuoria (opcional)" error={errors.mortuary_quota}>
+                        <Input
+                            id="mortuary_quota"
+                            name="mortuary_quota"
+                            type="number"
+                            min={0}
+                            defaultValue={contract?.mortuary_quota ?? ''}
+                            onChange={(e) => setMortuaryQuota(Number(e.target.value) || 0)}
+                            placeholder="Sin valor"
+                        />
+                    </Field>
                     <Field id="total" label="Total Contrato" error={errors.total}>
                         <Input 
                             id="total" 
@@ -250,7 +263,7 @@ export default function ContractFormFields({
                                         max={120}
                                         value={count} 
                                         onChange={(e) => setCount(Number(e.target.value))}
-                                        placeholder="12" 
+                                        placeholder="1" 
                                     />
                                 </Field>
                                 <Field id="first_due_date" label="Fecha Vencimiento 1ª Cuota" error={errors.first_due_date}>

@@ -150,7 +150,8 @@ class ContractController extends Controller
 
         $total = (float) ($contract->total ?? 0);
         $downPayment = (float) ($contract->down_payment ?? 0);
-        $balance = max(0.0, $total - $downPayment);
+        $mortuaryQuota = (float) ($contract->mortuary_quota ?? 0);
+        $balance = max(0.0, $total - $downPayment - $mortuaryQuota);
 
         if ($balance <= 0) {
             return;

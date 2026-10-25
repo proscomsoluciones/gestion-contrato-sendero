@@ -101,6 +101,7 @@ export default function InstallmentsIndex({
         legacy_contract_rut: '',
         amount: '',
         status: 'PENDIENTE DE PAGO',
+        due_date: '',
         paid_at: '',
         invoice_number: '',
     });
@@ -111,6 +112,7 @@ export default function InstallmentsIndex({
         legacy_contract_rut: '',
         amount: '',
         status: 'PENDIENTE DE PAGO',
+        due_date: '',
         paid_at: '',
         invoice_number: '',
     });
@@ -141,6 +143,7 @@ export default function InstallmentsIndex({
             legacy_contract_rut: installment.legacy_contract_rut || '',
             amount: installment.amount !== null && installment.amount !== undefined ? String(installment.amount) : '',
             status: installment.status || 'PENDIENTE DE PAGO',
+            due_date: installment.due_date || '',
             paid_at: installment.paid_at || '',
             invoice_number: installment.invoice_number || '',
         });
@@ -336,9 +339,11 @@ export default function InstallmentsIndex({
                             <thead>
                                 <tr className="bg-slate-50/80 text-[10px] font-black uppercase text-slate-500 tracking-wider py-2.5 px-3.5 border-b border-slate-200/80">
                                     <th className="py-3 px-3.5 whitespace-nowrap">CONTRATO / CLIENTE</th>
+                                    <th className="py-3 px-3.5 whitespace-nowrap">N° CUOTA</th>
                                     <th className="py-3 px-3.5 whitespace-nowrap">VALOR CUOTA</th>
-                                    <th className="py-3 px-3.5 whitespace-nowrap">ESTADO</th>
                                     <th className="py-3 px-3.5 whitespace-nowrap">FECHA DE PAGO</th>
+                                    <th className="py-3 px-3.5 whitespace-nowrap">ESTADO</th>
+                                    <th className="py-3 px-3.5 whitespace-nowrap">PAGADA EL</th>
                                     <th className="py-3 px-3.5 whitespace-nowrap">N° FACTURA</th>
                                     <th className="py-3 px-3.5 text-right whitespace-nowrap min-w-[130px]">ACCIONES</th>
                                 </tr>
@@ -354,6 +359,9 @@ export default function InstallmentsIndex({
                                         : 'CU';
                                     const rut = contract?.rut || installment.legacy_contract_rut;
                                     const paidDateFormatted = formatDate(installment.paid_at);
+                                    const dueDateFormatted = formatDate(installment.due_date);
+                                    const isPaid = (installment.status || '').toUpperCase().includes('PAGAD') || !!installment.paid_at;
+                                    const isOverdue = !isPaid && !!installment.due_date && installment.due_date < new Date().toLocaleDateString('en-CA');
 
                                     const bgColors = [
                                         'bg-emerald-100 text-emerald-800',
@@ -400,17 +408,40 @@ export default function InstallmentsIndex({
                                                 </div>
                                             </td>
 
-                                            {/* 2. VALOR CUOTA */}
+                                            {/* 2. N° CUOTA */}
+                                            <td className="py-3 px-3.5 whitespace-nowrap">
+                                                {installment.number ? (
+                                                    <span className="font-extrabold text-slate-800">
+                                                        {installment.number} <span className="text-slate-400 font-bold">de {installment.total_count}</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 font-semibold text-xs">—</span>
+                                                )}
+                                            </td>
+
+                                            {/* 3. VALOR CUOTA */}
                                             <td className="py-3 px-3.5 font-mono font-black text-emerald-700 text-xs whitespace-nowrap">
                                                 {formatAmount(installment.amount)}
                                             </td>
 
-                                            {/* 3. ESTADO */}
+                                            {/* 4. FECHA DE PAGO (VENCIMIENTO) */}
+                                            <td className="py-3 px-3.5 whitespace-nowrap">
+                                                {dueDateFormatted ? (
+                                                    <div className={`font-bold ${isOverdue ? 'text-rose-700' : 'text-slate-700'}`}>
+                                                        <span>{dueDateFormatted}</span>
+                                                        {isOverdue && <span className="ml-1.5 text-[10px] font-black uppercase">Vencida</span>}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400 font-semibold text-xs">—</span>
+                                                )}
+                                            </td>
+
+                                            {/* 5. ESTADO */}
                                             <td className="py-3 px-3.5 whitespace-nowrap">
                                                 {renderStatusBadge(installment.status)}
                                             </td>
 
-                                            {/* 4. FECHA DE PAGO */}
+                                            {/* 6. PAGADA EL */}
                                             <td className="py-3 px-3.5 text-slate-800 whitespace-nowrap">
                                                 {paidDateFormatted ? (
                                                     <div className="flex items-center gap-1.5 font-bold text-slate-700">
@@ -422,7 +453,7 @@ export default function InstallmentsIndex({
                                                 )}
                                             </td>
 
-                                            {/* 5. FACTURA */}
+                                            {/* 7. FACTURA */}
                                             <td className="py-3 px-3.5 whitespace-nowrap">
                                                 {installment.invoice_number ? (
                                                     <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-800 font-mono font-extrabold px-2.5 py-1 rounded-lg border border-slate-200 text-xs">
@@ -434,7 +465,7 @@ export default function InstallmentsIndex({
                                                 )}
                                             </td>
 
-                                            {/* 6. ACCIONES */}
+                                            {/* 8. ACCIONES */}
                                             <td className="py-3 px-3.5 text-right whitespace-nowrap min-w-[140px]">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <Button
@@ -462,7 +493,7 @@ export default function InstallmentsIndex({
 
                                 {filteredData.length === 0 && (
                                     <tr>
-                                        <td className="p-8 text-center text-slate-400 font-bold" colSpan={6}>
+                                        <td className="p-8 text-center text-slate-400 font-bold" colSpan={8}>
                                             No se encontraron cuotas registradas.
                                         </td>
                                     </tr>
@@ -473,13 +504,13 @@ export default function InstallmentsIndex({
                             {filteredData.length > 0 && (
                                 <tfoot>
                                     <tr className="bg-slate-100/90 text-xs font-black text-slate-800 border-t-2 border-slate-200">
-                                        <td className="py-3 px-3.5 uppercase tracking-wider text-slate-600">
+                                        <td colSpan={2} className="py-3 px-3.5 uppercase tracking-wider text-slate-600">
                                             Total Montos en Vista:
                                         </td>
                                         <td className="py-3 px-3.5 font-mono text-emerald-700 text-sm">
                                             {formatAmount(totalAmountOnPage)}
                                         </td>
-                                        <td colSpan={4} className="py-3 px-3.5"></td>
+                                        <td colSpan={5} className="py-3 px-3.5"></td>
                                     </tr>
                                 </tfoot>
                             )}
@@ -606,7 +637,18 @@ export default function InstallmentsIndex({
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="paid_at" className={labelClass}>Fecha de Pago</Label>
+                                    <Label htmlFor="due_date" className={labelClass}>Fecha de Pago (Vencimiento)</Label>
+                                    <Input
+                                        id="due_date"
+                                        type="date"
+                                        value={createForm.data.due_date}
+                                        onChange={(e) => createForm.setData('due_date', e.target.value)}
+                                        className={inputClass}
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="paid_at" className={labelClass}>Pagada el</Label>
                                     <Input
                                         id="paid_at"
                                         type="date"
@@ -731,7 +773,18 @@ export default function InstallmentsIndex({
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="edit_paid_at" className={labelClass}>Fecha de Pago</Label>
+                                    <Label htmlFor="edit_due_date" className={labelClass}>Fecha de Pago (Vencimiento)</Label>
+                                    <Input
+                                        id="edit_due_date"
+                                        type="date"
+                                        value={editForm.data.due_date}
+                                        onChange={(e) => editForm.setData('due_date', e.target.value)}
+                                        className={inputClass}
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="edit_paid_at" className={labelClass}>Pagada el</Label>
                                     <Input
                                         id="edit_paid_at"
                                         type="date"

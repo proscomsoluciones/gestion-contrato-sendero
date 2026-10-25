@@ -49,6 +49,7 @@ class Contract extends Model
         'surcharge',
         'additional_charge',
         'down_payment',
+        'mortuary_quota',
         'total',
         'is_installment_plan',
         'installments_count',

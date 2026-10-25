@@ -53,6 +53,31 @@ function formatAmount(value: number | null) {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value);
 }
 
+// Suma meses a una fecha Y-m-d con el mismo desborde que Carbon::addMonths (31-ene + 1 mes = 03-mar)
+function addMonths(value: string, months: number) {
+    const [year, month, day] = value.split('-').map(Number);
+    const d = new Date(year, month - 1 + months, day);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function todayIso() {
+    return addMonths(new Date().toLocaleDateString('en-CA'), 0);
+}
+
+// Saldo a financiar = total - pie - cuota mortuoria; misma regla y calendario que ContractController::generateInstallments
+function financingSummary(data: { total: string; down_payment: string; mortuary_quota: string; installments_count: string; first_due_date: string; contract_date: string }) {
+    const balance = Math.max(0, (Number(data.total) || 0) - (Number(data.down_payment) || 0) - (Number(data.mortuary_quota) || 0));
+    const count = Math.max(1, Math.min(120, Number(data.installments_count) || 1));
+    const base = Math.floor(balance / count);
+    const start = data.first_due_date || addMonths(data.contract_date || todayIso(), 1);
+    const schedule = Array.from({ length: count }, (_, i) => ({
+        number: i + 1,
+        dueDate: addMonths(start, i),
+        amount: i === 0 ? base + (balance - base * count) : base,
+    }));
+    return { balance, count, schedule };
+}
+
 function formatDate(value: string | null) {
     if (!value) return '—';
     const [year, month, day] = value.split('-').map(Number);
@@ -84,7 +109,7 @@ export default function ContractsIndex({
 
     // Create Form Hook
     const createForm = useForm({
-        contract_date: new Date().toISOString().split('T')[0],
+        contract_date: todayIso(),
         first_name: '',
         last_name: '',
         rut: '',
@@ -105,8 +130,11 @@ export default function ContractsIndex({
         seller_id: '',
         amount: '',
         down_payment: '',
+        mortuary_quota: '',
         total: '',
         is_installment_plan: true,
+        installments_count: '1',
+        first_due_date: addMonths(todayIso(), 1),
         observation: '',
     });
 
@@ -133,8 +161,11 @@ export default function ContractsIndex({
         seller_id: '',
         amount: '',
         down_payment: '',
+        mortuary_quota: '',
         total: '',
         is_installment_plan: true,
+        installments_count: '1',
+        first_due_date: '',
         observation: '',
     });
 
@@ -183,8 +214,11 @@ export default function ContractsIndex({
             seller_id: contract.seller_id ? String(contract.seller_id) : '',
             amount: contract.amount ? String(contract.amount) : '',
             down_payment: contract.down_payment ? String(contract.down_payment) : '',
+            mortuary_quota: contract.mortuary_quota ? String(contract.mortuary_quota) : '',
             total: contract.total ? String(contract.total) : '',
             is_installment_plan: !!contract.is_installment_plan,
+            installments_count: contract.installments_count ? String(contract.installments_count) : '1',
+            first_due_date: contract.first_due_date || '',
             observation: contract.observation || '',
         });
         setContractToEdit(contract);
@@ -751,6 +785,10 @@ export default function ContractsIndex({
                                         <Input id="down_payment" type="number" min={0} value={createForm.data.down_payment} onChange={(e) => createForm.setData('down_payment', e.target.value)} placeholder="50000" className={inputClass} />
                                     </div>
                                     <div>
+                                        <Label htmlFor="mortuary_quota" className={labelClass}>Cuota Mortuoria ($ CLP) <span className="normal-case font-semibold text-slate-400">(opcional)</span></Label>
+                                        <Input id="mortuary_quota" type="number" min={0} value={createForm.data.mortuary_quota} onChange={(e) => createForm.setData('mortuary_quota', e.target.value)} placeholder="Sin valor" className={inputClass} />
+                                    </div>
+                                    <div>
                                         <Label htmlFor="seller_id" className={labelClass}>Vendedor Asignado</Label>
                                         <select id="seller_id" value={createForm.data.seller_id} onChange={(e) => createForm.setData('seller_id', e.target.value)} className={inputClass}>
                                             <option value="">Sin vendedor asignado</option>
@@ -765,6 +803,50 @@ export default function ContractsIndex({
                                             <Label htmlFor="modal_is_installment_plan" className="text-xs font-bold text-slate-700 cursor-pointer">Modalidad en Cuotas Mensuales</Label>
                                         </div>
                                     </div>
+                                    {createForm.data.is_installment_plan ? (
+                                        <div>
+                                            <Label htmlFor="installments_count" className={labelClass}>N° de Cuotas</Label>
+                                            <Input id="installments_count" type="number" min={1} max={120} value={createForm.data.installments_count} onChange={(e) => createForm.setData('installments_count', e.target.value)} onBlur={() => { if (!(Number(createForm.data.installments_count) >= 1)) createForm.setData('installments_count', '1'); }} placeholder="1" className={inputClass} />
+                                        </div>
+                                    ) : (
+                                        <div />
+                                    )}
+                                    {createForm.data.is_installment_plan && (
+                                        <div>
+                                            <Label htmlFor="first_due_date" className={labelClass}>Fecha de Pago 1ª Cuota</Label>
+                                            <Input id="first_due_date" type="date" value={createForm.data.first_due_date} onChange={(e) => createForm.setData('first_due_date', e.target.value)} className={inputClass} />
+                                        </div>
+                                    )}
+                                    {(() => {
+                                        const f = financingSummary(createForm.data);
+                                        return (
+                                            <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 space-y-2">
+                                                <div>Saldo a financiar: <span className="font-extrabold text-slate-900">{formatAmount(f.balance)}</span></div>
+                                                {createForm.data.is_installment_plan && f.balance > 0 && (
+                                                    <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                                                        <table className="w-full text-left">
+                                                            <thead className="sticky top-0 bg-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                                                <tr>
+                                                                    <th className="px-3 py-1.5">Cuota</th>
+                                                                    <th className="px-3 py-1.5">Fecha de pago</th>
+                                                                    <th className="px-3 py-1.5 text-right">Monto</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {f.schedule.map((row) => (
+                                                                    <tr key={row.number} className="border-t border-slate-100">
+                                                                        <td className="px-3 py-1.5 font-bold text-slate-700">{row.number} de {f.count}</td>
+                                                                        <td className="px-3 py-1.5">{formatDate(row.dueDate)}</td>
+                                                                        <td className="px-3 py-1.5 text-right font-extrabold text-emerald-700">{formatAmount(row.amount)}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                     <div className="sm:col-span-2">
                                         <Label htmlFor="observation" className={labelClass}>Observaciones del Contrato</Label>
                                         <Input id="observation" value={createForm.data.observation} onChange={(e) => createForm.setData('observation', e.target.value)} placeholder="Notas adicionales o convenio" className={inputClass} />
@@ -1008,6 +1090,10 @@ export default function ContractsIndex({
                                         <Input id="edit_down_payment" type="number" min={0} value={editForm.data.down_payment} onChange={(e) => editForm.setData('down_payment', e.target.value)} placeholder="50000" className={inputClass} />
                                     </div>
                                     <div>
+                                        <Label htmlFor="edit_mortuary_quota" className={labelClass}>Cuota Mortuoria ($ CLP) <span className="normal-case font-semibold text-slate-400">(opcional)</span></Label>
+                                        <Input id="edit_mortuary_quota" type="number" min={0} value={editForm.data.mortuary_quota} onChange={(e) => editForm.setData('mortuary_quota', e.target.value)} placeholder="Sin valor" className={inputClass} />
+                                    </div>
+                                    <div>
                                         <Label htmlFor="edit_seller_id" className={labelClass}>Vendedor Asignado</Label>
                                         <select id="edit_seller_id" value={editForm.data.seller_id} onChange={(e) => editForm.setData('seller_id', e.target.value)} className={inputClass}>
                                             <option value="">Sin vendedor asignado</option>
@@ -1022,6 +1108,50 @@ export default function ContractsIndex({
                                             <Label htmlFor="edit_modal_is_installment_plan" className="text-xs font-bold text-slate-700 cursor-pointer">Modalidad en Cuotas Mensuales</Label>
                                         </div>
                                     </div>
+                                    {editForm.data.is_installment_plan ? (
+                                        <div>
+                                            <Label htmlFor="edit_installments_count" className={labelClass}>N° de Cuotas</Label>
+                                            <Input id="edit_installments_count" type="number" min={1} max={120} value={editForm.data.installments_count} onChange={(e) => editForm.setData('installments_count', e.target.value)} onBlur={() => { if (!(Number(editForm.data.installments_count) >= 1)) editForm.setData('installments_count', '1'); }} placeholder="1" className={inputClass} />
+                                        </div>
+                                    ) : (
+                                        <div />
+                                    )}
+                                    {editForm.data.is_installment_plan && (
+                                        <div>
+                                            <Label htmlFor="edit_first_due_date" className={labelClass}>Fecha de Pago 1ª Cuota</Label>
+                                            <Input id="edit_first_due_date" type="date" value={editForm.data.first_due_date} onChange={(e) => editForm.setData('first_due_date', e.target.value)} className={inputClass} />
+                                        </div>
+                                    )}
+                                    {(() => {
+                                        const f = financingSummary(editForm.data);
+                                        return (
+                                            <div className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600 space-y-2">
+                                                <div>Saldo a financiar: <span className="font-extrabold text-slate-900">{formatAmount(f.balance)}</span></div>
+                                                {editForm.data.is_installment_plan && f.balance > 0 && (
+                                                    <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200 bg-white">
+                                                        <table className="w-full text-left">
+                                                            <thead className="sticky top-0 bg-slate-100 text-[10px] font-black uppercase tracking-wider text-slate-500">
+                                                                <tr>
+                                                                    <th className="px-3 py-1.5">Cuota</th>
+                                                                    <th className="px-3 py-1.5">Fecha de pago</th>
+                                                                    <th className="px-3 py-1.5 text-right">Monto</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {f.schedule.map((row) => (
+                                                                    <tr key={row.number} className="border-t border-slate-100">
+                                                                        <td className="px-3 py-1.5 font-bold text-slate-700">{row.number} de {f.count}</td>
+                                                                        <td className="px-3 py-1.5">{formatDate(row.dueDate)}</td>
+                                                                        <td className="px-3 py-1.5 text-right font-extrabold text-emerald-700">{formatAmount(row.amount)}</td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })()}
                                     <div className="sm:col-span-2">
                                         <Label htmlFor="edit_observation" className={labelClass}>Observaciones del Contrato</Label>
                                         <Input id="edit_observation" value={editForm.data.observation} onChange={(e) => editForm.setData('observation', e.target.value)} placeholder="Notas adicionales o convenio" className={inputClass} />
